@@ -2,6 +2,7 @@ const http = require("http");
 const fs = require("fs");
 const path = require("path");
 const { execFile } = require("child_process");
+const { CoordinateMapper } = require("./src/core/coordinate-mapper");
 
 const root = path.join(__dirname, "web");
 const port = Number(process.env.PORT || 4173);
@@ -136,6 +137,7 @@ function captureWindow(hwnd, callback) {
 
 function createServer() {
   return http.createServer((request, response) => {
+  const requestUrl = new URL(request.url, "http://127.0.0.1");
   if (request.url === "/api/windows") {
     enumerateWindows((error, windows) => {
       if (error) {
@@ -146,6 +148,23 @@ function createServer() {
       response.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" });
       response.end(JSON.stringify({ windows }));
     });
+    return;
+  }
+
+  if (requestUrl.pathname === "/api/coordinates/map") {
+    const logicalWidth = Number(requestUrl.searchParams.get("logicalWidth") || 1920);
+    const logicalHeight = Number(requestUrl.searchParams.get("logicalHeight") || 1080);
+    const clientWidth = Number(requestUrl.searchParams.get("clientWidth"));
+    const clientHeight = Number(requestUrl.searchParams.get("clientHeight"));
+    try {
+      const mapper = new CoordinateMapper(logicalWidth, logicalHeight);
+      const transform = mapper.getTransform(clientWidth, clientHeight);
+      response.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" });
+      response.end(JSON.stringify({ logicalWidth, logicalHeight, clientWidth, clientHeight, ...transform }));
+    } catch (error) {
+      response.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
+      response.end(JSON.stringify({ error: "坐标映射参数无效", detail: error.message }));
+    }
     return;
   }
 

@@ -134,9 +134,16 @@ async function captureBoundWindow() {
     if (!response.ok) throw new Error(data.detail || data.error || "截图失败");
     boundWindow.dpi = data.dpi;
     updateBindingDiagnostics(boundWindow);
+    const mapResponse = await fetch(`/api/coordinates/map?logicalWidth=1920&logicalHeight=1080&clientWidth=${data.width}&clientHeight=${data.height}`);
+    const mapping = await mapResponse.json();
+    if (!mapResponse.ok) throw new Error(mapping.detail || mapping.error || "坐标映射失败");
     preview.innerHTML = `<img src="data:image/png;base64,${data.image}" alt="目标窗口客户区截图" />`;
     document.querySelector("#captureMeta").textContent = `${data.width} × ${data.height} / ${data.dpi} DPI`;
     document.querySelector("#diagCapture").textContent = "CopyFromScreen";
+    const values = document.querySelectorAll("#mappingStrip strong");
+    values[1].textContent = `${mapping.scale.toFixed(4)}×`;
+    values[2].textContent = `${Math.round(mapping.offsetX)}, ${Math.round(mapping.offsetY)}`;
+    values[3].textContent = `${Math.round(mapping.renderedWidth)} × ${Math.round(mapping.renderedHeight)}`;
     addLog(`已捕获客户区截图：${data.width} × ${data.height}，未发送输入。`);
   } catch (error) {
     preview.innerHTML = `<div class="preview-mark">!</div><span>${error.message}</span>`;

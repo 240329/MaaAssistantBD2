@@ -92,3 +92,21 @@ test("returns a controlled capture error for a missing window", async (t) => {
   assert.equal(result.statusCode, 422);
   assert.match(result.body.error, /无法捕获目标窗口/);
 });
+
+test("returns coordinate mapping diagnostics without invoking input", async (t) => {
+  const server = await startServer();
+  t.after(() => server.close());
+  const result = await requestJson(server.address().port, "/api/coordinates/map?clientWidth=1600&clientHeight=1200");
+  assert.equal(result.statusCode, 200);
+  assert.equal(result.body.logicalWidth, 1920);
+  assert.equal(result.body.offsetX, 0);
+  assert.equal(result.body.offsetY, 150);
+});
+
+test("rejects invalid coordinate mapping dimensions", async (t) => {
+  const server = await startServer();
+  t.after(() => server.close());
+  const result = await requestJson(server.address().port, "/api/coordinates/map?clientWidth=0&clientHeight=720");
+  assert.equal(result.statusCode, 400);
+  assert.match(result.body.error, /坐标映射参数无效/);
+});
