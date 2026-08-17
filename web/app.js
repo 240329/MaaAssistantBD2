@@ -71,6 +71,9 @@ function updateBindingDiagnostics(window) {
   document.querySelector("#diagProcess").textContent = window ? `${window.processName}.exe (${window.processId})` : "—";
   document.querySelector("#diagClass").textContent = window?.className || "—";
   document.querySelector("#diagRect").textContent = window ? `${window.rect.right - window.rect.left} × ${window.rect.bottom - window.rect.top}` : "—";
+  document.querySelector("#diagDpi").textContent = window?.dpi ? `${window.dpi} DPI` : "待捕获";
+  document.querySelector("#captureWindow").disabled = !window;
+  document.querySelector("#captureMeta").textContent = window ? "客户区 / 只读诊断" : "等待绑定";
 }
 
 function bindWindow(window) {
@@ -119,6 +122,32 @@ async function scanWindows() {
   }
 }
 
+async function captureBoundWindow() {
+  if (!boundWindow) return;
+  const button = document.querySelector("#captureWindow");
+  const preview = document.querySelector("#capturePreview");
+  button.disabled = true;
+  button.textContent = "正在捕获…";
+  try {
+    const response = await fetch(`/api/windows/${boundWindow.hwnd}/capture`);
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.detail || data.error || "截图失败");
+    boundWindow.dpi = data.dpi;
+    updateBindingDiagnostics(boundWindow);
+    preview.innerHTML = `<img src="data:image/png;base64,${data.image}" alt="目标窗口客户区截图" />`;
+    document.querySelector("#captureMeta").textContent = `${data.width} × ${data.height} / ${data.dpi} DPI`;
+    document.querySelector("#diagCapture").textContent = "CopyFromScreen";
+    addLog(`已捕获客户区截图：${data.width} × ${data.height}，未发送输入。`);
+  } catch (error) {
+    preview.innerHTML = `<div class="preview-mark">!</div><span>${error.message}</span>`;
+    document.querySelector("#diagCapture").textContent = "捕获失败";
+    showToast("客户区截图失败");
+  } finally {
+    button.disabled = !boundWindow;
+    button.textContent = "▣ 捕获客户区截图";
+  }
+}
+
 function runSimulation() {
   if (running) return;
   running = true;
@@ -164,6 +193,7 @@ document.querySelector("#addTask").addEventListener("click", () => showToast("�
 document.querySelector("#openBinding").addEventListener("click", () => { document.querySelector('[data-view="binding"]').click(); showToast("请扫描并选择目标游戏窗口"); });
 document.querySelector("#scanWindows").addEventListener("click", scanWindows);
 document.querySelector("#refreshWindows").addEventListener("click", scanWindows);
+document.querySelector("#captureWindow").addEventListener("click", captureBoundWindow);
 setInterval(checkBoundWindow, 3000);
 
 renderTasks();

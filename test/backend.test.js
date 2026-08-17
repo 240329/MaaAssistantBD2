@@ -21,6 +21,15 @@ function requestJson(port, pathname) {
   });
 }
 
+function requestStatus(port, pathname) {
+  return new Promise((resolve, reject) => {
+    http.get({ host: "127.0.0.1", port, path: pathname }, (response) => {
+      response.resume();
+      response.on("end", () => resolve(response.statusCode));
+    }).on("error", reject);
+  });
+}
+
 async function startServer() {
   const server = createServer();
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
@@ -67,4 +76,19 @@ test("rejects traversal outside the web root", async (t) => {
     }).on("error", reject);
   });
   assert.equal(result, 403);
+});
+
+test("rejects invalid window handles before invoking capture", async (t) => {
+  const server = await startServer();
+  t.after(() => server.close());
+  const statusCode = await requestStatus(server.address().port, "/api/windows/not-a-handle/capture");
+  assert.equal(statusCode, 404);
+});
+
+test("returns a controlled capture error for a missing window", async (t) => {
+  const server = await startServer();
+  t.after(() => server.close());
+  const result = await requestJson(server.address().port, "/api/windows/0/capture");
+  assert.equal(result.statusCode, 422);
+  assert.match(result.body.error, /无法捕获目标窗口/);
 });
