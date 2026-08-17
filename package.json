@@ -1,0 +1,10 @@
+{
+  "name": "maa-assistant-bd2",
+  "version": "0.1.0",
+  "private": true,
+  "description": "BrownDust2 assistant UI prototype",
+  "scripts": {
+    "start": "node server.js",
+    "test:backend": "node --test test/backend.test.js"
+  }
+}

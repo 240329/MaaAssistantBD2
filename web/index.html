@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>棕色尘埃2助手</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">BD</div>
+          <div>
+            <strong>棕色尘埃2</strong>
+            <span>ASSISTANT / UI PREVIEW</span>
+          </div>
+        </div>
+
+        <div class="connection-card">
+          <div class="eyebrow">WINDOW BINDING</div>
+          <div class="connection-state"><i class="status-dot"></i><span id="bindingState">未绑定游戏窗口</span></div>
+          <button class="secondary-button" id="openBinding">选择窗口</button>
+        </div>
+
+        <nav class="nav-list" aria-label="主导航">
+          <button class="nav-item active" data-view="overview"><span class="nav-icon">◈</span>任务工作台</button>
+          <button class="nav-item" data-view="catalog"><span class="nav-icon">✦</span>功能目录</button>
+          <button class="nav-item" data-view="binding"><span class="nav-icon">⌗</span>窗口绑定</button>
+          <button class="nav-item" data-view="settings"><span class="nav-icon">⚙</span>设置</button>
+        </nav>
+
+        <div class="sidebar-footer">
+          <div class="version-label">PREVIEW BUILD 0.1</div>
+          <div class="footer-line"><span class="pulse"></span>模拟模式已启用</div>
+        </div>
+      </aside>
+
+      <main class="main-content">
+        <header class="topbar">
+          <div>
+            <div class="breadcrumb">工作台 <span>/</span> 今日计划</div>
+            <h1 id="pageTitle">今日任务</h1>
+          </div>
+          <div class="top-actions">
+            <button class="icon-button" title="打开帮助" aria-label="打开帮助">?</button>
+            <button class="avatar" title="本地配置">BD</button>
+          </div>
+        </header>
+
+        <section class="view active" id="overviewView">
+          <div class="hero-strip">
+            <div>
+              <div class="eyebrow accent">DAILY ROUTINE / 计划草案</div>
+              <h2>把重复操作交给助手。</h2>
+              <p>先编排任务，再绑定游戏窗口。当前页面只运行模拟任务，不会对真实游戏执行操作。</p>
+            </div>
+            <div class="hero-metric"><strong id="completedCount">0</strong><span>/ 22 项规划功能</span></div>
+          </div>
+
+          <div class="section-heading">
+            <div><span class="eyebrow">TASK QUEUE</span><h3>任务队列</h3></div>
+            <div class="queue-tools"><button class="text-button" id="selectAll">全选</button><button class="text-button" id="clearAll">清空</button><button class="add-button" id="addTask">＋ 添加任务</button></div>
+          </div>
+
+          <div class="workspace-grid">
+            <section class="panel task-panel">
+              <div class="panel-header"><span>运行顺序</span><span class="muted" id="taskCount">6 项</span></div>
+              <div class="task-list" id="taskList"></div>
+            </section>
+
+            <section class="panel config-panel">
+              <div class="panel-header"><span>任务配置</span><span class="status-tag">UI PREVIEW</span></div>
+              <div id="configContent" class="config-content"></div>
+            </section>
+
+            <section class="panel console-panel">
+              <div class="panel-header"><span>运行控制台</span><span class="live-label"><i class="status-dot"></i> READY</span></div>
+              <div class="console-summary"><div class="summary-icon">◎</div><div><strong id="runState">等待开始</strong><span id="runDetail">绑定窗口后可运行真实任务</span></div></div>
+              <div class="progress-track"><div class="progress-bar" id="progressBar"></div></div>
+              <div class="console-log" id="consoleLog"><div class="log-entry"><time>09:41:08</time><span>助手已启动，等待任务编排。</span></div><div class="log-entry"><time>09:41:08</time><span>当前为模拟模式，不会发送游戏输入。</span></div></div>
+              <div class="console-actions"><button class="primary-button" id="runSimulation">▶ 模拟运行</button><button class="stop-button" id="stopSimulation" disabled>■ 停止</button></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="catalogView">
+          <div class="page-intro"><div class="eyebrow accent">FEATURE CATALOG</div><h2>功能目录</h2><p>所有功能先以模块登记，具体逻辑可在后续阶段逐项接入。</p></div>
+          <div class="catalog-grid" id="catalogGrid"></div>
+        </section>
+
+        <section class="view" id="bindingView">
+          <div class="page-intro"><div class="eyebrow accent">WIN32 CONTROLLER</div><h2>窗口绑定</h2><p>绑定目标 HWND 后，后续阶段将在这里展示截图、客户区尺寸与 DPI 诊断信息。</p></div>
+          <div class="binding-layout"><section class="panel window-panel"><div class="panel-header"><span>可用窗口</span><button class="text-button" id="refreshWindows">刷新</button></div><div class="window-placeholder" id="windowList"><div class="window-glyph">⌗</div><strong>尚未扫描窗口</strong><span>点击“扫描窗口”获取当前桌面窗口列表</span><button class="secondary-button" id="scanWindows">扫描窗口</button></div></section><section class="panel diagnostics-panel"><div class="panel-header"><span>绑定诊断</span><span class="status-tag" id="bindingTag">待连接</span></div><div class="diagnostic-row"><span>HWND</span><strong id="diagHwnd">—</strong></div><div class="diagnostic-row"><span>进程</span><strong id="diagProcess">—</strong></div><div class="diagnostic-row"><span>客户区</span><strong id="diagRect">—</strong></div><div class="diagnostic-row"><span>窗口类名</span><strong id="diagClass">—</strong></div><div class="diagnostic-row"><span>截图方式</span><strong>阶段 3 探测</strong></div></section></div>
+        </section>
+
+        <section class="view" id="settingsView">
+          <div class="page-intro"><div class="eyebrow accent">PREFERENCES</div><h2>设置</h2><p>先保留影响 UI 和调试体验的基础选项，自动化策略将在后续阶段加入。</p></div>
+          <div class="settings-list"><label class="setting-row"><span><strong>模拟运行模式</strong><small>只生成任务事件，不向游戏窗口发送输入</small></span><input type="checkbox" checked id="simulationToggle" /></label><label class="setting-row"><span><strong>启动时恢复上次队列</strong><small>保留任务排序和启用状态</small></span><input type="checkbox" checked /></label><label class="setting-row"><span><strong>保存调试截图</strong><small>识别失败时保存截图和 ROI 标记</small></span><input type="checkbox" /></label><label class="setting-row"><span><strong>紧凑日志</strong><small>减少控制台中低优先级消息</small></span><input type="checkbox" /></label></div>
+        </section>
+      </main>
+    </div>
+    <div class="toast" id="toast" role="status"></div>
+    <script src="/app.js"></script>
+  </body>
+</html>
