@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://maa-bd2.local/schemas/pipeline.schema.json",
+  "title": "BrownDust2 Assistant Pipeline",
+  "type": "object",
+  "required": ["id", "start", "nodes"],
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "status": { "enum": ["todo", "ready"] },
+    "start": { "type": "string", "minLength": 1 },
+    "nodes": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["detect"],
+        "properties": {
+          "detect": { "type": "object", "required": ["type"] },
+          "action": { "type": "object", "required": ["type"] },
+          "next": { "type": ["string", "null"] },
+          "onError": { "type": ["string", "null"] }
+        }
+      }
+    }
+  }
+}

@@ -1,42 +1,100 @@
-const tasks = [
-  { id: "daily", name: "每日领取", meta: "邮箱 / 任务奖励 / 通行证", type: "日常" },
-  { id: "guild", name: "公会与女神像", meta: "签到 / 亲密度", type: "社交" },
-  { id: "harvest", name: "收菜与吸取", meta: "收集物 / 葛罗提", type: "收集" },
-  { id: "shop", name: "商店采购", meta: "活动商店 / 广场商品", type: "商店" },
-  { id: "battle", name: "今日战斗", meta: "米饭 / 火把 / 狩猎场", type: "战斗" },
-  { id: "pvp", name: "自动 PVP", meta: "规划中，需人工确认", type: "竞技" }
-];
-
-const catalog = [
-  ["✦", "每日自动抽角色", "每日抽取角色并预留资源阈值。"], ["◈", "自动抽武器", "武器抽取策略与次数限制。"], ["⌁", "公会签到", "进入公会页面并完成签到。"], ["◌", "邮箱领取", "批量领取邮件附件。"], ["▣", "通行证领取", "检查并领取可用奖励。"], ["♢", "魔兽挑战", "挑战流程与结果识别。"], ["✚", "活动战斗", "活动关卡与次数控制。"], ["▤", "活动商店购买", "按优先级和资源上限购买。"], ["◎", "收集物吸取", "地图收集物识别与吸取。"], ["⌂", "酒馆亲密度", "执行互动并追踪可用次数。"], ["⚔", "自动 PVP", "队伍策略与赛季次数控制。"], ["◫", "每周地图任务", "每周目标和完成状态追踪。"]
-];
+let tasks = [];
+let definitions = [];
 
 const taskList = document.querySelector("#taskList");
 const configContent = document.querySelector("#configContent");
 const log = document.querySelector("#consoleLog");
 const progress = document.querySelector("#progressBar");
 const toast = document.querySelector("#toast");
-let selectedTask = tasks[0];
+let selectedTask = null;
 let running = false;
-let timer;
 let boundWindow = null;
 
 function renderTasks() {
-  taskList.innerHTML = tasks.map((task, index) => `<div class="task-row ${task.id === selectedTask.id ? "selected" : ""}" data-id="${task.id}"><span class="drag">⠿</span><label><input type="checkbox" checked /> <span class="task-name">${index + 1}. ${task.name}</span><span class="task-meta">${task.meta}</span></label><span class="task-badge">${task.type}</span></div>`).join("");
+  taskList.innerHTML = tasks.map((task, index) => `<div class="task-row ${task.id === selectedTask?.id ? "selected" : ""}" data-id="${task.id}"><span class="drag">⠿</span><label><input class="task-enabled" type="checkbox" ${task.enabled ? "checked" : ""} /> <span class="task-name">${index + 1}. ${task.name}</span><span class="task-meta">${task.meta}</span></label><span class="task-actions"><button title="上移" data-action="up">↑</button><button title="下移" data-action="down">↓</button><button title="删除" data-action="remove">×</button></span></div>`).join("");
   document.querySelectorAll(".task-row").forEach((row) => row.addEventListener("click", () => {
     selectedTask = tasks.find((task) => task.id === row.dataset.id);
     renderTasks();
     renderConfig();
   }));
+  document.querySelectorAll(".task-enabled").forEach((input) => input.addEventListener("click", (event) => {
+    event.stopPropagation();
+    const task = tasks.find((item) => item.id === input.closest(".task-row").dataset.id);
+    task.enabled = input.checked;
+    savePlan();
+  }));
+  document.querySelectorAll(".task-actions button").forEach((button) => button.addEventListener("click", (event) => {
+    event.stopPropagation();
+    editTaskOrder(button.closest(".task-row").dataset.id, button.dataset.action);
+  }));
   document.querySelector("#taskCount").textContent = `${tasks.length} 项`;
 }
 
 function renderConfig() {
-  configContent.innerHTML = `<div class="config-kicker">${selectedTask.type} / ${selectedTask.id.toUpperCase()}</div><h4>${selectedTask.name}</h4><div class="config-note">${selectedTask.meta}<br />该功能已登记到规划中，具体游戏逻辑将在 Win32 绑定验证后接入。</div><div class="field"><span>任务状态</span><strong>模拟可用</strong></div><div class="field"><span>失败处理</span><strong>停止并保留截图</strong></div><div class="field"><span>运行次数</span><strong>待配置</strong></div><div class="field"><span>资源限制</span><strong>待配置</strong></div>`;
+  const definition = definitions.find((item) => item.id === selectedTask.definitionId);
+  configContent.innerHTML = `<div class="config-kicker">${definition.group} / ${definition.id.toUpperCase()}</div><h4>${definition.name}</h4><div class="config-note">${definition.description}<br />${definition.logic}</div><div class="field"><span>任务状态</span><strong>TODO 占位</strong></div><div class="field"><span>资源文件</span><strong>${definition.resource}</strong></div><div class="field"><span>失败处理</span><strong>停止并保留诊断</strong></div><div class="field"><span>重试次数</span><strong>${selectedTask.retryLimit}</strong></div>`;
 }
 
 function renderCatalog() {
-  document.querySelector("#catalogGrid").innerHTML = catalog.map(([icon, title, description]) => `<article class="catalog-card"><div class="card-icon">${icon}</div><h4>${title}</h4><p>${description}</p><span class="planned">规划中</span></article>`).join("");
+  const icons = ["✦", "◈", "⌁", "◌", "▣", "♢", "✚", "▤", "◎", "⌂", "⚔", "◫"];
+  document.querySelector("#catalogGrid").innerHTML = definitions.map((definition, index) => `<article class="catalog-card"><div class="card-icon">${icons[index % icons.length]}</div><h4>${definition.name}</h4><p>${definition.description}</p><div class="catalog-footer"><span class="planned">TODO · ${definition.group}</span><button data-definition="${definition.id}">加入队列</button></div></article>`).join("");
+  document.querySelectorAll(".catalog-footer button").forEach((button) => button.addEventListener("click", () => addTask(button.dataset.definition)));
+}
+
+function serializePlan() {
+  return {
+    version: 1,
+    updatedAt: new Date().toISOString(),
+    tasks: tasks.map(({ id, definitionId, enabled, parameters, retryLimit }) => ({ id, definitionId, enabled, parameters, retryLimit }))
+  };
+}
+
+async function savePlan() {
+  const response = await fetch("/api/plan", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(serializePlan()) });
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.detail || result.error || "计划保存失败");
+  showToast("任务计划已保存");
+}
+
+function addTask(definitionId) {
+  const definition = definitions.find((item) => item.id === definitionId);
+  const task = { id: `${definitionId}-${Date.now()}`, definitionId, enabled: true, parameters: {}, retryLimit: definition.retryLimit, name: definition.name, meta: definition.description, type: definition.group };
+  tasks.push(task);
+  selectedTask = task;
+  renderTasks();
+  renderConfig();
+  savePlan().catch((error) => showToast(error.message));
+}
+
+function editTaskOrder(id, action) {
+  const index = tasks.findIndex((task) => task.id === id);
+  if (action === "remove") {
+    tasks.splice(index, 1);
+    selectedTask = tasks[Math.min(index, tasks.length - 1)] || null;
+  } else {
+    const target = action === "up" ? index - 1 : index + 1;
+    if (target < 0 || target >= tasks.length) return;
+    [tasks[index], tasks[target]] = [tasks[target], tasks[index]];
+  }
+  renderTasks();
+  if (selectedTask) renderConfig(); else configContent.innerHTML = `<div class="config-note">从功能目录添加任务以开始编排。</div>`;
+  savePlan().catch((error) => showToast(error.message));
+}
+
+async function loadTaskModel() {
+  const response = await fetch("/api/tasks");
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || "任务模型加载失败");
+  definitions = data.definitions;
+  tasks = data.plan.tasks.map((task) => {
+    const definition = definitions.find((item) => item.id === task.definitionId);
+    return { ...task, name: definition.name, meta: definition.description, type: definition.group };
+  });
+  selectedTask = tasks[0];
+  renderTasks();
+  renderConfig();
+  renderCatalog();
+  document.querySelector("#completedCount").textContent = definitions.length;
 }
 
 function addLog(message, tone = "") {
@@ -158,30 +216,31 @@ async function captureBoundWindow() {
 function runSimulation() {
   if (running) return;
   running = true;
-  let step = 0;
   document.querySelector("#runSimulation").disabled = true;
   document.querySelector("#stopSimulation").disabled = false;
   document.querySelector("#runState").textContent = "模拟运行中";
   document.querySelector("#runDetail").textContent = "不会发送游戏输入";
-  addLog("模拟任务队列已开始。", "success");
-  timer = setInterval(() => {
-    step += 1;
-    const current = tasks[(step - 1) % tasks.length];
-    progress.style.width = `${Math.min(step / tasks.length * 100, 100)}%`;
-    document.querySelector("#runDetail").textContent = `正在检查：${current.name}`;
-    addLog(`已模拟检查「${current.name}」：等待真实流程接入。`);
-    if (step >= tasks.length) stopSimulation(true);
-  }, 650);
+  progress.style.width = "20%";
+  addLog("后端任务调度器已开始，所有资源仍为 TODO 占位。", "success");
+  fetch("/api/run", { method: "POST" })
+    .then((response) => response.json().then((result) => ({ response, result })))
+    .then(({ response, result }) => {
+      if (!response.ok) throw new Error(result.error || "任务调度失败");
+      result.results.forEach((item) => addLog(`「${item.definitionId}」${item.state}：${item.message}`));
+      stopSimulation(result.state === "idle");
+    })
+    .catch((error) => { addLog(`调度失败：${error.message}`); stopSimulation(false); });
 }
 
 function stopSimulation(completed = false) {
-  clearInterval(timer);
+  if (running && !completed) fetch("/api/stop", { method: "POST" }).catch(() => {});
   running = false;
   document.querySelector("#runSimulation").disabled = false;
   document.querySelector("#stopSimulation").disabled = true;
   document.querySelector("#runState").textContent = completed ? "模拟完成" : "已停止";
   document.querySelector("#runDetail").textContent = completed ? "任务事件已全部生成" : "等待下一次运行";
-  if (completed) { document.querySelector("#completedCount").textContent = tasks.length; addLog("模拟队列完成，没有执行真实输入。", "success"); }
+  progress.style.width = completed ? "100%" : "0";
+  if (completed) addLog("任务计划完成：未执行真实游戏输入。", "success");
 }
 
 document.querySelectorAll(".nav-item").forEach((item) => item.addEventListener("click", () => {
@@ -194,15 +253,16 @@ document.querySelectorAll(".nav-item").forEach((item) => item.addEventListener("
 
 document.querySelector("#runSimulation").addEventListener("click", runSimulation);
 document.querySelector("#stopSimulation").addEventListener("click", () => stopSimulation());
-document.querySelector("#selectAll").addEventListener("click", () => document.querySelectorAll(".task-row input").forEach((input) => { input.checked = true; }));
-document.querySelector("#clearAll").addEventListener("click", () => document.querySelectorAll(".task-row input").forEach((input) => { input.checked = false; }));
-document.querySelector("#addTask").addEventListener("click", () => showToast("自定义任务将在后续阶段开放"));
+document.querySelector("#selectAll").addEventListener("click", () => { tasks.forEach((task) => { task.enabled = true; }); renderTasks(); savePlan().catch((error) => showToast(error.message)); });
+document.querySelector("#clearAll").addEventListener("click", () => { tasks.forEach((task) => { task.enabled = false; }); renderTasks(); savePlan().catch((error) => showToast(error.message)); });
+document.querySelector("#addTask").addEventListener("click", () => { document.querySelector('[data-view="catalog"]').click(); showToast("从功能目录选择任务"); });
 document.querySelector("#openBinding").addEventListener("click", () => { document.querySelector('[data-view="binding"]').click(); showToast("请扫描并选择目标游戏窗口"); });
 document.querySelector("#scanWindows").addEventListener("click", scanWindows);
 document.querySelector("#refreshWindows").addEventListener("click", scanWindows);
 document.querySelector("#captureWindow").addEventListener("click", captureBoundWindow);
 setInterval(checkBoundWindow, 3000);
 
-renderTasks();
-renderConfig();
-renderCatalog();
+loadTaskModel().catch((error) => {
+  addLog(`任务模型加载失败：${error.message}`);
+  document.querySelector("#runSimulation").disabled = true;
+});

@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "updatedAt": "2026-08-17T00:00:00.000Z",
+  "tasks": [
+    { "id": "mail-claim-1", "definitionId": "mail-claim", "enabled": true, "parameters": {}, "retryLimit": 1 },
+    { "id": "daily-reward-2", "definitionId": "daily-reward", "enabled": true, "parameters": {}, "retryLimit": 1 },
+    { "id": "guild-sign-in-3", "definitionId": "guild-sign-in", "enabled": true, "parameters": {}, "retryLimit": 1 },
+    { "id": "harvest-4", "definitionId": "harvest", "enabled": true, "parameters": {}, "retryLimit": 1 },
+    { "id": "event-shop-5", "definitionId": "event-shop", "enabled": true, "parameters": {}, "retryLimit": 1 },
+    { "id": "rice-battle-6", "definitionId": "rice-battle", "enabled": true, "parameters": {}, "retryLimit": 1 },
+    { "id": "pvp-7", "definitionId": "pvp", "enabled": false, "parameters": {}, "retryLimit": 1 }
+  ]
+}

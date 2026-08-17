@@ -73,6 +73,9 @@ h3 { margin-top: 4px; font-size: 18px; }
 .task-name { display: block; font-size: 12px; }
 .task-meta { display: block; margin-top: 2px; color: var(--muted); font-size: 10px; }
 .task-badge { padding: 3px 5px; color: #a38b7b; border: 1px solid #e3d7ce; border-radius: 3px; font-size: 9px; }
+.task-actions { display: flex; gap: 2px; }
+.task-actions button { display: grid; width: 20px; height: 20px; place-items: center; padding: 0; color: #9b887c; border: 0; border-radius: 3px; background: transparent; font-size: 11px; }
+.task-actions button:hover { color: white; background: var(--rust); }
 .config-content { padding: 19px; }
 .config-kicker { color: var(--rust); font-size: 11px; font-weight: 700; }
 .config-content h4 { margin: 7px 0 17px; font-size: 18px; }
@@ -104,6 +107,9 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 .catalog-card h4 { margin: 11px 0 4px; font-size: 14px; }
 .catalog-card p { color: var(--muted); font-size: 11px; }
 .catalog-card .planned { display: inline-block; margin-top: 13px; padding: 3px 6px; color: #9a806f; background: #f4ebe4; border-radius: 3px; font-size: 9px; }
+.catalog-footer { display: flex; align-items: end; justify-content: space-between; gap: 8px; }
+.catalog-footer button { padding: 5px 8px; color: var(--rust-dark); border: 1px solid #ddc9ba; border-radius: 4px; background: transparent; font-size: 10px; }
+.catalog-footer button:hover { color: white; background: var(--rust); }
 .binding-layout { display: grid; grid-template-columns: 1.35fr .85fr; gap: 15px; }
 .window-placeholder { display: grid; place-items: center; min-height: 350px; padding: 25px; color: var(--muted); text-align: center; }
 .window-placeholder strong, .window-placeholder span { display: block; }

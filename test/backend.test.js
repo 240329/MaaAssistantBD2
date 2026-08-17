@@ -21,6 +21,20 @@ function requestJson(port, pathname) {
   });
 }
 
+function sendJson(port, method, pathname, payload) {
+  return new Promise((resolve, reject) => {
+    const body = JSON.stringify(payload);
+    const request = http.request({ host: "127.0.0.1", port, path: pathname, method, headers: { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(body) } }, (response) => {
+      let responseBody = "";
+      response.setEncoding("utf8");
+      response.on("data", (chunk) => { responseBody += chunk; });
+      response.on("end", () => resolve({ statusCode: response.statusCode, body: JSON.parse(responseBody) }));
+    });
+    request.on("error", reject);
+    request.end(body);
+  });
+}
+
 function requestStatus(port, pathname) {
   return new Promise((resolve, reject) => {
     http.get({ host: "127.0.0.1", port, path: pathname }, (response) => {
@@ -109,4 +123,31 @@ test("rejects invalid coordinate mapping dimensions", async (t) => {
   const result = await requestJson(server.address().port, "/api/coordinates/map?clientWidth=0&clientHeight=720");
   assert.equal(result.statusCode, 400);
   assert.match(result.body.error, /坐标映射参数无效/);
+});
+
+test("serves the complete task registry and persisted plan", async (t) => {
+  const server = await startServer();
+  t.after(() => server.close());
+  const result = await requestJson(server.address().port, "/api/tasks");
+  assert.equal(result.statusCode, 200);
+  assert.equal(result.body.definitions.length, 23);
+  assert.ok(result.body.plan.tasks.length > 0);
+});
+
+test("rejects invalid task plan updates through the backend", async (t) => {
+  const server = await startServer();
+  t.after(() => server.close());
+  const result = await sendJson(server.address().port, "PUT", "/api/plan", { version: 1, tasks: [{ definitionId: "unknown" }] });
+  assert.equal(result.statusCode, 400);
+  assert.match(result.body.error, /任务计划无效/);
+});
+
+test("runs the persisted plan and returns structured TODO events", async (t) => {
+  const server = await startServer();
+  t.after(() => server.close());
+  const result = await sendJson(server.address().port, "POST", "/api/run", {});
+  assert.equal(result.statusCode, 200);
+  assert.equal(result.body.state, "idle");
+  assert.ok(result.body.results.every((item) => ["skipped", "cancelled"].includes(item.state)));
+  assert.ok(result.body.events.some((event) => event.type === "run.started"));
 });

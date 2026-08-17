@@ -3,6 +3,9 @@ const fs = require("fs");
 const path = require("path");
 const { execFile } = require("child_process");
 const { CoordinateMapper } = require("./src/core/coordinate-mapper");
+const { taskDefinitions } = require("./src/tasks/task-definitions");
+const { TaskScheduler } = require("./src/tasks/task-scheduler");
+const { PlanStore } = require("./src/tasks/plan-store");
 
 const root = path.join(__dirname, "web");
 const port = Number(process.env.PORT || 4173);
@@ -12,6 +15,32 @@ const mime = {
   ".js": "text/javascript; charset=utf-8",
   ".json": "application/json; charset=utf-8"
 };
+const planStore = new PlanStore(path.join(__dirname, "data", "task-plan.json"));
+const scheduler = new TaskScheduler({ resourceRoot: __dirname });
+scheduler.loadPlan(planStore.load());
+const eventJournal = [];
+scheduler.on("event", (event) => {
+  eventJournal.push(event);
+  if (eventJournal.length > 500) eventJournal.shift();
+});
+
+function sendJson(response, statusCode, payload) {
+  response.writeHead(statusCode, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" });
+  response.end(JSON.stringify(payload));
+}
+
+function readJson(request, callback) {
+  let body = "";
+  request.setEncoding("utf8");
+  request.on("data", (chunk) => {
+    body += chunk;
+    if (body.length > 1024 * 1024) request.destroy(new Error("请求内容过大"));
+  });
+  request.on("end", () => {
+    try { callback(null, body ? JSON.parse(body) : {}); } catch (error) { callback(error); }
+  });
+  request.on("error", callback);
+}
 
 const windowScript = `
 Add-Type @"
@@ -138,6 +167,45 @@ function captureWindow(hwnd, callback) {
 function createServer() {
   return http.createServer((request, response) => {
   const requestUrl = new URL(request.url, "http://127.0.0.1");
+  if (request.method === "GET" && requestUrl.pathname === "/api/tasks") {
+    sendJson(response, 200, { definitions: taskDefinitions, plan: scheduler.getPlan(), state: scheduler.state });
+    return;
+  }
+
+  if (request.method === "GET" && requestUrl.pathname === "/api/plan") {
+    sendJson(response, 200, { plan: scheduler.getPlan(), state: scheduler.state });
+    return;
+  }
+
+  if (request.method === "GET" && requestUrl.pathname === "/api/events") {
+    sendJson(response, 200, { events: eventJournal.slice(-200), state: scheduler.state });
+    return;
+  }
+
+  if (request.method === "PUT" && requestUrl.pathname === "/api/plan") {
+    readJson(request, (error, plan) => {
+      if (error) { sendJson(response, 400, { error: "任务计划 JSON 无效" }); return; }
+      try {
+        const saved = scheduler.updatePlan(plan);
+        planStore.save(saved);
+        sendJson(response, 200, { plan: saved });
+      } catch (updateError) { sendJson(response, 400, { error: "任务计划无效", detail: updateError.message }); }
+    });
+    return;
+  }
+
+  if (request.method === "POST" && requestUrl.pathname === "/api/run") {
+    const eventOffset = eventJournal.length;
+    scheduler.run({ delayMs: 80 }).then((result) => sendJson(response, 200, { ...result, events: eventJournal.slice(eventOffset) })).catch((error) => sendJson(response, 409, { error: error.message }));
+    return;
+  }
+
+  if (request.method === "POST" && requestUrl.pathname === "/api/stop") {
+    scheduler.requestCancel();
+    sendJson(response, 202, { state: scheduler.state });
+    return;
+  }
+
   if (request.url === "/api/windows") {
     enumerateWindows((error, windows) => {
       if (error) {
@@ -212,4 +280,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer, captureWindow, enumerateWindows };
+module.exports = { createServer, captureWindow, enumerateWindows, scheduler, planStore, eventJournal };
